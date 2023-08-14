@@ -1,0 +1,56 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <regex>
+#include <vector>
+#include <tuple>
+
+int main() {
+    std::string input_file_path = "top_output.txt";
+    std::ifstream input_file(input_file_path);
+
+    if (!input_file.is_open()) {
+        std::cerr << "Error opening input file." << std::endl;
+        return 1;
+    }
+
+    std::string top_output((std::istreambuf_iterator<char>(input_file)),
+                            std::istreambuf_iterator<char>());
+    input_file.close();
+
+    std::regex pid_pattern("\\s*(\\d+)\\s");
+    std::regex user_pattern("\\s*(\\w+)\\s+\\d+\\s");
+
+    std::vector<std::string> pids;
+    std::vector<std::string> users;
+
+    std::sregex_iterator pid_it(top_output.begin(), top_output.end(), pid_pattern);
+    std::sregex_iterator user_it(top_output.begin(), top_output.end(), user_pattern);
+
+    while (pid_it != std::sregex_iterator()) {
+        pids.push_back(pid_it->str(1));
+        ++pid_it;
+    }
+
+    while (user_it != std::sregex_iterator()) {
+        users.push_back(user_it->str(1));
+        ++user_it;
+    }
+
+    if (pids.size() != users.size()) {
+        std::cerr << "Error parsing output." << std::endl;
+        return 1;
+    }
+
+    std::vector<std::tuple<std::string, std::string>> pid_user_list;
+
+    for (size_t i = 0; i < pids.size(); ++i) {
+        pid_user_list.push_back(std::make_tuple(pids[i], users[i]));
+    }
+
+    for (const auto& pid_user : pid_user_list) {
+        std::cout << "PID: " << std::get<0>(pid_user) << ", User: " << std::get<1>(pid_user) << std::endl;
+    }
+
+    return 0;
+}
