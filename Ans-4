@@ -1,0 +1,36 @@
+The code is an implementation of a producer-consumer problem using pthreads and semaphores. 
+The goal is to have a producer thread that produces data and adds it to a buffer, and a consumer thread that consumes data from the buffer. 
+However, there is a bug in the code related to the 'count' variable.
+
+Bug Explanation:
+The 'count' variable is used to keep track of the number of elements in the buffer. 
+It's being incremented in the 'add_data' function and decremented in the 'remove_data' function. 
+The problem arises because the increment and decrement operations on 'count' are not protected by a mutex or semaphore, leading to a potential race condition.
+
+Fixing the Bug:
+To fix this issue, we need to protect the 'count' variable using the same mutex that is used to protect the critical sections involving the buffer ('add_data' and 'remove_data'). 
+Here's the modified code with the necessary changes:
+
+In 'add_data' function :
+We will add the following line before 'if' condition ->
+pthread_mutex_lock(&lock);  // Acquire the lock before modifying count
+
+And will add the following line at end->
+pthread_mutex_unlock(&lock);  // Release the lock after modifying count
+
+In 'remove_data' function :
+We will add the following line at start of this function ->
+pthread_mutex_lock(&lock);  // Acquire the lock before modifying count
+
+We will add the following line after count decrement ->
+pthread_mutex_unlock(&lock);  // Release the lock after modifying count
+free(temp);  // Free the removed node
+
+In this modified code, the 'count' variable is protected by acquiring and releasing the same mutex (lock) that is used to protect the critical sections involving the buffer. 
+This ensures that the 'count' variable is safely updated by both the producer and consumer threads without causing a race condition.
+
+
+
+
+
+
