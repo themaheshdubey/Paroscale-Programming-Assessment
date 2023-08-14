@@ -1,0 +1,77 @@
+#include <iostream>
+#include <thread>
+#include <vector>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+#include <random>
+
+std::mutex mtx;
+std::condition_variable cv;
+
+std::queue<int> dataQueue;
+
+const int NUM_PRODUCERS = 2;
+const int NUM_CONSUMERS = 1;
+const int NUM_ITEMS = 10;
+
+void producer(int id) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(1, 100);
+
+    for (int i = 0; i < NUM_ITEMS; ++i) {
+        int data = dis(gen);
+
+        {
+            std::lock_guard<std::mutex> lock(mtx);
+            dataQueue.push(data);
+            std::cout << "Producer " << id << " produced: " << data << std::endl;
+        }
+
+        cv.notify_all(); // Notify consumers that new data is available
+        std::this_thread::sleep_for(std::chrono::milliseconds(dis(gen)));
+    }
+}
+
+void consumer(int id) {
+    while (true) {
+        int data;
+
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, []{ return !dataQueue.empty(); });
+
+            data = dataQueue.front();
+            dataQueue.pop();
+        }
+
+        std::cout << "Consumer " << id << " consumed: " << data << std::endl;
+    }
+}
+
+int main() {
+    std::vector<std::thread> producers;
+    std::vector<std::thread> consumers;
+
+    for (int i = 0; i < NUM_PRODUCERS; ++i) {
+        producers.emplace_back(producer, i);
+    }
+
+    for (int i = 0; i < NUM_CONSUMERS; ++i) {
+        consumers.emplace_back(consumer, i);
+    }
+
+    for (auto& producerThread : producers) {
+        producerThread.join();
+    }
+
+    // Notify consumers to finish when all producers are done
+    cv.notify_all();
+
+    for (auto& consumerThread : consumers) {
+        consumerThread.join();
+    }
+
+    return 0;
+}
