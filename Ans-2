@@ -1,0 +1,38 @@
+#include <iostream>
+#include <filesystem>
+#include <thread>
+#include <mutex>
+#include <vector>
+
+std::mutex mtx;
+
+void countFilesAndDirs(const std::filesystem::path& dirPath, int& numFiles, int& numDirs) {
+    int localNumFiles = 0;
+    int localNumDirs = 0;
+
+    for (const auto& entry : std::filesystem::directory_iterator(dirPath)) {
+        if (entry.is_regular_file()) {
+            localNumFiles++;
+        } else if (entry.is_directory()) {
+            localNumDirs++;
+            countFilesAndDirs(entry.path(), localNumFiles, localNumDirs);
+        }
+    }
+
+    std::lock_guard<std::mutex> lock(mtx);
+    numFiles += localNumFiles;
+    numDirs += localNumDirs;
+}
+
+int main() {
+    std::filesystem::path rootPath = "/path/to/your/directory";
+    int totalNumFiles = 0;
+    int totalNumDirs = 0;
+
+    countFilesAndDirs(rootPath, totalNumFiles, totalNumDirs);
+
+    std::cout << "Total Files: " << totalNumFiles << std::endl;
+    std::cout << "Total Directories: " << totalNumDirs << std::endl;
+
+    return 0;
+}
